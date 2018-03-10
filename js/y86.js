@@ -3,7 +3,7 @@ var MEM_SIZE = 0x2000;
 
 // Registers and memory
 var PC 		= 0,
-	REG		= new Uint32Array(8),
+	REG		= UInt64Array(15),
 	STAT	= 'AOK',
 	MEMORY 	= new Uint8Array(MEM_SIZE),
 	SF = 0, ZF = 0, OF = 0,
@@ -11,7 +11,7 @@ var PC 		= 0,
 
 // Bounds check the register array
 function getRegister (idx) {
-	if (idx < 0 || idx > 8) {
+	if (idx < 0 || idx > 15) {
 		STAT = 'INS';
 		throw new Error('Invalid register ID: 0x' + idx.toString(16));
 	}
@@ -31,7 +31,7 @@ function print (x) {
 // Reset
 function RESET() {
 	PC 	= 0;
-	REG	= new Uint32Array(8);
+	REG	= UInt64Array(15);
 	STAT = 'AOK';
 	SF = 0; ZF = 0; OF = 0;
 	ERR = '';
@@ -40,20 +40,26 @@ function RESET() {
 // Load
 function LD (addr, mem) {
 	mem = mem || MEMORY;
+	addr = addr.low
 	var result;
-	if (addr < 0 || addr + 4 > MEM_SIZE) {
+	if (addr < 0 || addr + 8 > MEM_SIZE) {
 		STAT = 'ADR';
 		throw new Error("Invalid address 0x" + addr.toString(16));
 	}
-	result  = mem[addr];
-	result |= mem[addr + 1] << 8;
-	result |= mem[addr + 2] << 16;
-	result |= mem[addr + 3] << 24;
-	return result;
+	low  = mem[addr];
+	low |= mem[addr + 1] << 8;
+	low |= mem[addr + 2] << 16;
+	low |= mem[addr + 3] << 24;
+	high  = mem[addr + 4];
+	high |= mem[addr + 5] << 8;
+	high |= mem[addr + 6] << 16;
+	high |= mem[addr + 7] << 24;
+	return new UInt64(high, low);//I hope this is right
 }
 
 // Store
 function ST(addr, data, bytes){
+	addr = addr.low
 	var result, i;
 	if (addr < 0 || addr + bytes > MEM_SIZE) {
 		STAT = 'ADR';
@@ -63,8 +69,10 @@ function ST(addr, data, bytes){
 		bytes = Math.ceil(Math.log(data + 1) / Math.log(16) / 2);
 	}
 	for (i = 0; i < bytes; i++){
-		MEMORY[addr + i] = data & 0xFF;
-		data = data >> 8;
+		console.log("ST " + data.toString(16) + " " + (data.low & 0xFF) + " i " + i + " bytes " + bytes + " addr " + addr + " M " + MEMORY[addr + i - 1]);
+		MEMORY[addr + i] = data.low & 0xFF;
+		console.log(MEMORY);
+		data = data.rightshift(8);
 	}
 	return addr;
 }
@@ -81,19 +89,27 @@ function DECODE (bytearr) {
 		args['rA'] = (bytearr[1] >> 4) & 0x0F;
 		args['rB'] = bytearr[1] & 0x0F;
 	}
-	if (len === 5) {
-		var temp = bytearr[1];
-		temp |= bytearr[2] << 8;
-		temp |= bytearr[3] << 16;
-		temp |= bytearr[4] << 24;
-		args['Dest'] = temp;
-	} else if (len === 6) {
-		var temp = bytearr[2];
-		temp |= bytearr[3] << 8;
-		temp |= bytearr[4] << 16;
-		temp |= bytearr[5] << 24;
-		args['D'] = temp;
-		args['V'] = temp;
+	if (len === 9) {
+		var tempLow = bytearr[1];
+		tempLow |= bytearr[2] << 8;
+		tempLow |= bytearr[3] << 16;
+		tempLow |= bytearr[4] << 24;
+		var tempHigh = bytearr[5];
+		tempHigh |= bytearr[6] << 8;
+		tempHigh |= bytearr[7] << 16;
+		tempHigh |= bytearr[8] << 24;
+		args['Dest'] = new UInt64(tempHigh, tempLow);
+	} else if (len === 10) {
+		var tempLow = bytearr[2];
+		tempLow |= bytearr[3] << 8;
+		tempLow |= bytearr[4] << 16;
+		tempLow |= bytearr[5] << 24;
+		var tempHigh = bytearr[6];
+		tempHigh |= bytearr[7] << 8;
+		tempHigh |= bytearr[8] << 16;
+		tempHigh |= bytearr[9] << 24;
+		args['D'] = new UInt64(tempHigh, tempLow);
+		args['V'] = new UInt64(tempHigh, tempLow);
 	}
 	return args;
 }
@@ -118,11 +134,11 @@ function evalArgs(list, args, symbols){
 		}
 		else if (item === 'V' || item === 'D') {
 			if (symbols.hasOwnProperty(args[i])) {
-				result['V'] = toBigEndian(padHex(symbols[args[i]], 8));
+				result['V'] = toBigEndian(padHex(symbols[args[i]], 16));
 				result['D'] = result['V'];
 			} else {
 				try {
-					result['V'] = toBigEndian(padHex(parseNumberLiteral(args[i].replace('$', '')) >>> 0, 8));
+					result['V'] = toBigEndian(padHex(parseNumberLiteral(args[i].replace('$', '')).toString(16), 16));
 				} catch (e) {
 					// Use 'not a symbol' instead of the more cryptic 'not a number'
 					throw new Error('Undefined symbol: ' + args[i]);
@@ -131,7 +147,7 @@ function evalArgs(list, args, symbols){
 			}
 		} else if (item === 'Dest') {
 			try {
-				result['Dest'] = toBigEndian(padHex(symbols[args[i]].toString(16), 8));	
+				result['Dest'] = toBigEndian(padHex(symbols[args[i]].toString(16), 16));	
 			} catch (e) {
 				throw new Error('Undefined symbol: ' + args[i]);
 			}
@@ -142,7 +158,7 @@ function evalArgs(list, args, symbols){
 		    var T = patt.test(args[i]); // test if parentheses are used or not
 		    var D = args[i].replace(patt, '$1');
 		    if (symbols.hasOwnProperty(D)) D = symbols[D]; // if D is a symbol, get its value
-		    result['D'] = toBigEndian(padHex(parseNumberLiteral(D) >>> 0, 8)); // D will be zero if unused
+		    result['D'] = toBigEndian(padHex(parseNumberLiteral(D).toString(16), 16)); // D will be zero if unused
 		    
 		    if(T) { /* rB used */
 			var R = args[i].replace(patt, '$2');		    
@@ -236,7 +252,7 @@ function ASSEMBLE (raw, errorsOnly) {
 		if (dir) {
 			if (dir[1] === '.pos') {
 				try {
-					counter = parseNumberLiteral(dir[2]);
+					counter = parseNumberLiteral(dir[2]).low;//this might break...
 				} catch (e) {
 					errors.push([i + 1, e.message]);
 				}
@@ -248,7 +264,7 @@ function ASSEMBLE (raw, errorsOnly) {
 				}
 				counter = Math.ceil(counter / alignTo) * alignTo;
 			} else if (dir[1] === '.long') {
-				counter += 4;
+				counter += 8;
 			} else {
 				errors.push([i + 1, 'Unknown directive: ' + dir[1]]);
 			}
@@ -282,8 +298,8 @@ function ASSEMBLE (raw, errorsOnly) {
 				else
 					errors.push([i + 1, 'Error while parsing .long directive: undefined symbol ' + dir[1]]);
 			}
-			result[i][1] = toBigEndian(padHex(value >>> 0, 8));
-			counter += 4;
+			result[i][1] = toBigEndian(padHex(value, 16));
+			counter += 8;
 			return;
 		}
 
@@ -311,8 +327,8 @@ function ASSEMBLE (raw, errorsOnly) {
 		if (line[0].length)
 			compiledPart += line[0] + ': ' + line[1];
 		
-		// pad to fit 22 characters
-		var padding = new Array(24 - compiledPart.length).join(' ');
+		// pad to fit 30 characters
+		var padding = new Array(32 - compiledPart.length).join(' ');//TODO
 
 		return compiledPart + padding + '| ' + line[2];
 	}).join('\n');
@@ -385,11 +401,14 @@ function STEP () {
 	var args = DECODE(instr);
 
 	// Execute + Memory + Write Back ???
+	//*
 	try {
 		INSTR[icode].call(args);
 	} catch (e) {
 		ERR = e.message;
-	}
+	}/*/
+	INSTR[icode].call(args);
+	//*/
 }
 
 function hex2arr (str) {
@@ -402,8 +421,7 @@ function hex2arr (str) {
 
 // Object file string to byte array
 function toByteArray(str) {
-	var lines = str.split('\n'),
-		line, addr, size, bytearr;
+	var lines = str.split('\n'), line, addr, size, bytearr;
 
 	bytearr = new Uint8Array(MEM_SIZE);
 

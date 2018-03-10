@@ -1,7 +1,7 @@
 var ASSEM = [];
 
 (function () {
-	function padq (n) { if (n.length === 8) return n; else return toBigEndian(padHex(n, 8)); }
+	function padq (n) { if (n.length === 16) return n; else return toBigEndian(padHex(n, 16)); }
 
 	ASSEM[0] = function () {
 		return '00';
@@ -51,7 +51,7 @@ var ASSEM = [];
 		return 'b0' + this.rA + 'f';
 	};
 
-        ASSEM[12] = function () { // iaddl, isubl, iandl, ixorl
+        ASSEM[12] = function () { // iaddq, isubq, iandq, ixorq
                 return 'c' + this.fn + 'f' + this.rB + padq(this.V);
 	};
 

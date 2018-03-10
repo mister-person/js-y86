@@ -14,8 +14,7 @@ var MemoryView = Backbone.View.extend({
 
 	render: function () {
 		this.$el.empty().append(this.template());
-		this.$ebp = this.$('.ebp');
-		this.$esp = this.$('.esp');
+		this.$rsp = this.$('.rsp');
 		this.$wordContainerWrapper = this.$('.mem-words-wrapper');
 		this.$wordContainer = this.$('.mem-words');
 		this.$wordContainer.on('scroll', this.autoload.bind(this));
@@ -42,7 +41,7 @@ var MemoryView = Backbone.View.extend({
 			$word = new MemWordView({ index: idx });
 			this.$words.push($word);
 			this.$wordContainer.append($word.$el);
-			idx += 4;
+			idx += 8;
 		}
 
 		this.numRendered = idx;
@@ -62,33 +61,30 @@ var MemoryView = Backbone.View.extend({
 	},
 
 	updateStackPointers: function () {
-		var ebp = REG[5] / 4 * 15;
-		var esp = REG[4] / 4 * 15;
-		var old_ebp = this.$ebp.position().top;
-		var old_esp = this.$esp.position().top;
-		var ebp_changed = false, esp_changed = false;
+		var rsp = REG[4].low / 8 * 15;
+		console.log("usp " + rsp);
+		var old_rsp = this.$rsp.position().top;
+		rsp_changed = false;
 
-		if (ebp !== old_ebp && (ebp_changed = true))
-			this.$ebp.css('top', ebp + 'px');
-		if (esp !== old_esp && (esp_changed = true))
-			this.$esp.css('top', esp + 'px');
+		if (rsp !== old_rsp && (rsp_changed = true))
+			this.$rsp.css('top', rsp + 'px');
 		
-		if (ebp_changed || esp_changed) {
+		if (rsp_changed) {
 			var containerHeight = this.$wordContainer.height();
 			var scrollTop = this.$wordContainer.scrollTop();
 			var newScroll = null;
 
-			var max = ebp_changed ? esp_changed ? Math.max(ebp, esp) : ebp : esp;
+			var max = rsp;
 			if (max > scrollTop + containerHeight - 15)
 				newScroll = max - containerHeight + 55;
 
 			// Load more memory if needed to show the stack pointers.
-			while (this.numRendered < MEM_SIZE && this.numRendered < max / 15 * 4 + 4)
+			while (this.numRendered < MEM_SIZE && this.numRendered < max / 15 * 8 + 4)
 				this.render64();
 
 			// Prefer scrolling to the higher of the two possible changed
 			// values, if necessary.
-			var min = ebp_changed ? esp_changed ? Math.min(ebp, esp) : ebp : esp;
+			var min = rsp;
 			if (min < scrollTop + 15)
 				newScroll = min - 40;
 
@@ -110,7 +106,7 @@ var MemWordView = Backbone.View.extend({
 	render: function () {
 		var value = this.getValue();
 		var address_str = padHex(this.index, 4);
-		var value_str = padHex(value, 8);
+		var value_str = padHex(value.toString(16), 16);
 
 		// Template is too slow. Create the nodes manually.
 		var frag = document.createDocumentFragment();
@@ -128,15 +124,15 @@ var MemWordView = Backbone.View.extend({
 	},
 
 	getValue: function () {
-		var bytes = [MEMORY[this.index], MEMORY[this.index + 1], MEMORY[this.index + 2], MEMORY[this.index + 3]];
-		return ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | (bytes[3] << 0)) >>> 0;
+		var bytes = [MEMORY[this.index], MEMORY[this.index + 1], MEMORY[this.index + 2], MEMORY[this.index + 3], MEMORY[this.index + 4], MEMORY[this.index + 5], MEMORY[this.index + 6], MEMORY[this.index + 7]];
+		return new UInt64(((bytes[0] << 56) | (bytes[1] << 48) | (bytes[2] << 40) | (bytes[3] << 32)) >>> 0, ((bytes[4] << 24) | (bytes[5] << 16) | (bytes[6] << 8) | (bytes[7] << 0)) >>> 0);
 	},
 
 	update: function () {
 		var newValue = this.getValue();
 		if (this.lastValue !== newValue) {
 			this.lastValue = newValue;
-			this.$('.value').text(padHex(newValue, 8));
+			this.$('.value').text(padHex(newValue, 16));
 		}
 	}
 });

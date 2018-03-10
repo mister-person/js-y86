@@ -18,7 +18,7 @@ function diff (a, b) {
 	var addresses = {};
 	for (var i = 0; i < MEM_SIZE; i++)
 		if (a[i] !== b[i])
-			addresses[Math.floor(i / 4) * 4] = true;
+			addresses[Math.floor(i / 8) * 8] = true;
 
 	var changes = [];
 	for (var addr in addresses)
@@ -51,14 +51,21 @@ function run (object) {
 		pc: PC,
 		modifiedMemory: diff(initialState, MEMORY),
 		registers: {
-			eax: REG[0],
-			ecx: REG[1],
-			edx: REG[2],
-			ebx: REG[3],
-			esp: REG[4],
-			ebp: REG[5],
-			esi: REG[6],
-			edi: REG[7]
+			rax: REG[0],
+			rcx: REG[1],
+			rdx: REG[2],
+			rbx: REG[3],
+			rsp: REG[4],
+			rbp: REG[5],
+			rsi: REG[6],
+			rdi: REG[7],
+			r8x: REG[8],
+			r9x: REG[9],
+			r10x: REG[10],
+			r11x: REG[11],
+			r12x: REG[12],
+			r13x: REG[13],
+			r14x: REG[14]
 		},
 		flags: {
 			sf: SF,

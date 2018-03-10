@@ -1,14 +1,14 @@
 // General constants and functions
-var INSTRUCTION_LEN = [1, 1, 2, 6,
-                       6, 6, 2, 5,
-                       5, 1, 2, 2,
-                       6, 1, 1, 1],
-	num2reg = ['%eax', '%ecx', '%edx', '%ebx','%esp', '%ebp', '%esi', '%edi'],
+var INSTRUCTION_LEN = [1, 1, 2, 10,
+                       10, 10, 2, 9,
+                       9, 1, 2, 2,
+                       10, 1, 1, 1],
+	num2reg = ['%rax', '%rcx', '%rdx', '%rbx','%rsp', '%rbp', '%rsi', '%rdi', "%r8x", "%r9x", "%r10x", "%r11x", "%r12x", "%r13x", "%r14x"],
 	inst2num = {
 		'halt': 0,
 		'nop': 1,
 
-		'rrmovl': 2,
+		'rrmovq': 2,
 		'cmovle': 2,
 		'cmovl': 2,
 		'cmove': 2,
@@ -16,14 +16,14 @@ var INSTRUCTION_LEN = [1, 1, 2, 6,
 		'cmovge': 2,
 		'cmovg': 2,
 
-		'irmovl': 3,
-		'rmmovl': 4,
-		'mrmovl': 5,
+		'irmovq': 3,
+		'rmmovq': 4,
+		'mrmovq': 5,
 
-		'addl': 6,
-		'subl': 6,
-		'andl': 6,
-		'xorl': 6,
+		'addq': 6,
+		'subq': 6,
+		'andq': 6,
+		'xorq': 6,
 
 		'jmp': 7,
 		'jle': 7,
@@ -35,13 +35,13 @@ var INSTRUCTION_LEN = [1, 1, 2, 6,
 
 		'call': 8,
 		'ret': 9,
-		'pushl': 10,
-		'popl': 11,
+		'pushq': 10,
+		'popq': 11,
 
-	        'iaddl': 12,
-	        'isubl': 12,
-	        'iandl': 12,
-                'ixorl': 12,  
+	        'iaddq': 12,
+	        'isubq': 12,
+	        'iandq': 12,
+                'ixorq': 12,  
 
 		'brk': 15,
 		'brkle': 15,
@@ -52,12 +52,12 @@ var INSTRUCTION_LEN = [1, 1, 2, 6,
 		'brkg': 15
 	},
 	inst2fn = {
-		'addl': 0,
-		'subl': 1,
-		'andl': 2,
-		'xorl': 3,
+		'addq': 0,
+		'subq': 1,
+		'andq': 2,
+		'xorq': 3,
 
-		'rrmovl': 0,
+		'rrmovq': 0,
 		'cmovle': 1,
 		'cmovl': 2,
 		'cmove': 3,
@@ -73,10 +73,10 @@ var INSTRUCTION_LEN = [1, 1, 2, 6,
 		'jge': 5,
 		'jg': 6,
 
-	        'iaddl': 0,
-	        'isubl': 1,
-	        'iandl': 2,
-                'ixorl': 3,  
+	        'iaddq': 0,
+	        'isubq': 1,
+	        'iandq': 2,
+                'ixorq': 3,  
 	    
 		'brk': 0,
 		'brkle': 1,
@@ -108,12 +108,12 @@ function reg2str(registers){
 	return result;
 }
 
-function printMemory(){
+function printMemory(){//TODO 64 bit
 	var i = 0,
 		str = '';
 	for(b in MEMORY){
-		if (i % 4 === 0 && i > 0) {
-			print('PC = ' + (i - 4) + ' | ' + str);
+		if (i % 8 === 0 && i > 0) {
+			print('PC = ' + (i - 8) + ' | ' + str);
 			str = '';
 		}
 		str += num2hex(MEMORY[b]);
@@ -148,16 +148,42 @@ function hexstr2num(h){
 
 // Parse a number that is either in base 10 or in base 16 with '0x' in front.
 function parseNumberLiteral (str) {
-	if (isNaN(str))
-		throw new Error('Not a number: ' + str);
-	else if (str.length > 2 && str.substr(0, 2) === '0x')
-		return parseInt(str, 16);
-	else
-		return parseInt(str, 10);
+	if(str.length > 2 && str.substr(0, 2) === '0x') {
+		str = str.substr(2);
+		var high = 0;
+		var low = 0;
+		if(str.length > 8) {
+			high = parseInt(str.substr(0, str.length - 8), 16);
+			low = parseInt(str.substr(str.length - 8), 16);
+		}
+		else {
+			high = 0;
+			low = parseInt(str, 16);
+		}
+
+		if(isNaN(low) || isNaN(high)) {
+			throw new Error('Not a number: ' + str);
+		}
+		return new UInt64(high, low);
+	}
+	else {
+
+		if (isNaN(str)) {
+			throw new Error('Not a number (numbers > 2^32 must be in hex): ' + str);
+		}
+		else {
+			var int = parseInt(str, 10);
+			if(isNaN(int)) {
+				int = 0;
+			}
+			return new UInt64(int);
+		}
+	}
 }
 
 function padHex(num, width){
 	var result = num ? num.toString(16) : '0';
+	//var result = num.toBool() ? num.toString(16) : '0';
 	while (result.length < width) {
 		result = '0' + result;
 	}

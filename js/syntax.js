@@ -3,7 +3,7 @@ var SYNTAX = {};
 SYNTAX['halt'] = [];
 SYNTAX['nop'] = [];
 
-SYNTAX['rrmovl'] = ['rA', 'rB'];
+SYNTAX['rrmovq'] = ['rA', 'rB'];
 SYNTAX['cmovle'] = ['rA', 'rB'];
 SYNTAX['cmovl'] = ['rA', 'rB'];
 SYNTAX['cmove'] = ['rA', 'rB'];
@@ -11,14 +11,14 @@ SYNTAX['cmovne'] = ['rA', 'rB'];
 SYNTAX['cmovge'] = ['rA', 'rB'];
 SYNTAX['cmovg'] = ['rA', 'rB'];
 
-SYNTAX['irmovl'] = ['V', 'rB'];
-SYNTAX['rmmovl'] = ['rA', 'D(rB)'];
-SYNTAX['mrmovl'] = ['D(rB)', 'rA'];
+SYNTAX['irmovq'] = ['V', 'rB'];
+SYNTAX['rmmovq'] = ['rA', 'D(rB)'];
+SYNTAX['mrmovq'] = ['D(rB)', 'rA'];
 
-SYNTAX['addl'] = ['rA', 'rB'];
-SYNTAX['subl'] = ['rA', 'rB'];
-SYNTAX['xorl'] = ['rA', 'rB'];
-SYNTAX['andl'] = ['rA', 'rB'];
+SYNTAX['addq'] = ['rA', 'rB'];
+SYNTAX['subq'] = ['rA', 'rB'];
+SYNTAX['xorq'] = ['rA', 'rB'];
+SYNTAX['andq'] = ['rA', 'rB'];
 
 SYNTAX['jmp'] = ['Dest'];
 SYNTAX['jle'] = ['Dest'];
@@ -30,13 +30,13 @@ SYNTAX['jg'] = ['Dest'];
 
 SYNTAX['call'] = ['Dest'];
 SYNTAX['ret'] = [];
-SYNTAX['pushl'] = ['rA'];
-SYNTAX['popl'] = ['rA'];
+SYNTAX['pushq'] = ['rA'];
+SYNTAX['popq'] = ['rA'];
 
-SYNTAX['iaddl'] = ['V', 'rB'];
-SYNTAX['isubl'] = ['V', 'rB'];
-SYNTAX['ixorl'] = ['V', 'rB'];
-SYNTAX['iandl'] = ['V', 'rB'];
+SYNTAX['iaddq'] = ['V', 'rB'];
+SYNTAX['isubq'] = ['V', 'rB'];
+SYNTAX['ixorq'] = ['V', 'rB'];
+SYNTAX['iandq'] = ['V', 'rB'];
 
 SYNTAX['brk'] = [];
 SYNTAX['brkle'] = [];

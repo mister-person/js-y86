@@ -1,0 +1,108 @@
+.pos 0
+Init:
+    irmovq Stack, %rbp
+    irmovq Stack, %rsp
+
+Main:
+    pushq %rbp
+    rrmovq %rsp, %rbp
+
+    call Sort
+
+    popq %rbp
+
+    halt
+
+    .pos 0x104
+    .align 4
+array:
+    .long 0x0003        #array to be sorted
+    .long 0x0002
+    .long 0x0001
+    .long 0x0017
+    .long 0x0008
+    .long 0x0004
+    .long 0x9876
+    .long 0x0009
+    .long 0x0034
+    .long 0x0006
+    .long 0x0099
+    .long 0x0107
+
+Sort:
+    ##esi element count
+    ##eax loop1 counter
+    ##edx current max pointer
+    ##ebx loop2 counter
+    ##edi current element pointer
+    ##ecx temp variable
+    
+    #counters count by 4 
+
+    pushq %rbp
+    rrmovq %rsp, %rbp
+    pushq %rbx
+    pushq %rsi
+    pushq %rdi
+
+    irmovq $12, %rsi     #NUMBER OF ELENENTS
+    irmovq $4, %rax
+    addq %rsi, %rsi
+    addq %rsi, %rsi
+    subq %rax, %rsi     #esi = number of elements * 4 - 4, so it can be checked against the loop counters
+
+    rrmovq %rsi, %rax     #loop1 counter = eax, to be set to 0 at beginning of loop
+
+    Loop1:
+        xorq %rsi, %rax     #restore loop1 counter from being xor'd with esi
+
+        rrmovq %rax, %rbx   #loop2 counter = loop1 counter
+
+        irmovq array, %rdx  #current max = beginning of array
+        addq %rax, %rdx     #plus loop1 counter, unsorted part of array
+
+        pushq %rax          #save eax because not enough registers
+
+        xorq %rsi, %rbx     #scranble loop2 counter to be unscrambled in the loop
+
+        Loop2:
+            xorq %rsi, %rbx     #unscramble loop2 counter from being tested
+
+            irmovq $4, %rcx
+            addq %rcx, %rbx     #loop2 counter += 4
+
+            irmovq array, %rdi  #current element = array + loop2 counter
+            addq %rbx, %rdi
+            mrmovq (%rdi), %rcx #ecx = *(current element)
+            mrmovq (%rdx), %rax #eax = *(current max)
+
+            subq %rax, %rcx     #see if current element > current max
+            cmovl %rdi, %rdx    #if it is, set current max to current element
+
+            xorq %rsi, %rbx     #test if we're done with the list yet
+            jne Loop2
+        Loop2end:
+
+        popq %rax               #restore loop1 counter from push
+
+        #swap (%rax), (%rdx)
+        irmovq array, %rdi      #edi = beginning of unsorted part of array
+        addq %rax, %rdi
+        mrmovq (%rdi), %rbx     #swap edi with max of unsorted part of array
+        mrmovq (%rdx), %rcx
+        rmmovq %rbx, (%rdx)
+        rmmovq %rcx, (%rdi)
+
+        irmovq $4, %rcx         #loop1 counter += 4
+        addq %rcx, %rax
+        xorq %rsi, %rax         #if not done with list, keep looping
+        jne Loop1
+    Loop1end:
+
+    popq %rdi       #fix stack
+    popq %rsi
+    popq %rbx
+    popq %rbp
+
+.pos 0x100
+Stack:
